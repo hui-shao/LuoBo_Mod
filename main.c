@@ -62,7 +62,7 @@ void findWindow(void)
     hwnd = FindWindow(NULL, "保卫萝卜Beta");
     if (hwnd == NULL)
     {
-        pr_err("无法获取窗口句柄，请检查进程是否存在\n");
+        pr_err("无法获取窗口句柄，请检查进程是否存在!  Code: %lu\n", GetLastError());
         quit(1);
     }
 }
@@ -72,7 +72,7 @@ void getPID(void)
     GetWindowThreadProcessId(hwnd, &pid); // 获取 pid
     if (pid == 0)
     {
-        pr_err("无法获取PID!\n")
+        pr_err("无法获取PID!  Code: %lu\n", GetLastError());
         quit(1);
     }
     pr_info("PID: %lu\n", pid);
@@ -80,10 +80,11 @@ void getPID(void)
 
 void openProcess(void)
 {
-    hProcess = OpenProcess(PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE, pid);
+    hProcess = OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_INFORMATION | PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE,
+                           pid);
     if (hProcess == NULL)
     {
-        pr_err("无法获取句柄ID!\n");
+        pr_err("无法获取句柄ID!  Code: %lu\n", GetLastError());
         quit(1);
     }
     pr_bug("hProcess ID: %lu\n", (unsigned long) hProcess);
@@ -98,8 +99,7 @@ void getAddress(void)
     int bRet = EnumProcessModulesEx(hProcess, (HMODULE *) (hModule), sizeof(hModule), &dwRet, LIST_MODULES_ALL);
     if (bRet == 0)
     {
-        printf("EnumProcessModules Failed.\n");
-        system("pause\n");
+        pr_err("EnumProcessModules Failed.  Code: %lu\n", GetLastError());
         quit(0);
     }
     totalModuleNum = dwRet / sizeof(HMODULE);
@@ -153,9 +153,9 @@ void modifyCoinNum(void)
 {
     DWORD coinNum_previous = 0;
     ReadProcessMemory(hProcess, (LPCVOID) Address.coinNumBase, &coinNum_previous, 4, NULL);
-    pr_bug("Previous Coin Num: %lu\n", coinNum_previous);
+    pr_info("Previous Coin Num: %lu\n", coinNum_previous);
     DWORD coinNum_target = 666666;
-    if (coinNum_previous < coinNum_target)
+    if (coinNum_previous < coinNum_target - 1000)
     {
         WriteProcessMemory(hProcess, (LPVOID) Address.coinNumBase, &coinNum_target, 4, NULL);
         pr_info("Set Coin Num to: %lu\n", coinNum_target);
