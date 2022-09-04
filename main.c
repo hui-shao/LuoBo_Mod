@@ -180,7 +180,7 @@ void modifyPlantSub(void)
 void modifyUpgradeSub(void)
 {
     static const BYTE originalCode[] = {0x01, 0x46, 0x74};  // add
-    static const BYTE targetCode[] = {0x29, 0x46, 0x74};  // sub
+    static const BYTE targetCode[] = {0x90, 0x90, 0x90};  // sub
     BYTE tempBuf[3] = {0};
     ReadProcessMemory(hProcess, (LPCVOID) Address.upgradeSubBase, tempBuf, sizeof(tempBuf), NULL);
     pr_bug("Previous Code - UpgradeSub: %x %x\n", tempBuf[0], tempBuf[1]);
@@ -243,7 +243,7 @@ int main()
     while (loopContinueFlag)
     {
         modifyCoinNum();
-        Sleep(5 * 1000);
+        Sleep(8 * 1000);
     }
     quit(0);
 }
