@@ -13,6 +13,8 @@ struct
     DWORD coinNumBase;
     DWORD coinCheckBase;
     DWORD jumpCheckBase;
+    DWORD plantSubBase;
+    DWORD upgradeSubBase;
 } Address;
 
 BOOL WINAPI CtrlHandler(DWORD fdwCtrlType)
@@ -127,6 +129,12 @@ void getAddress(void)
 
     Address.jumpCheckBase = Address.moduleBase + 0x24580;
     pr_bug("跳转校验基址: 0x%p\n", (void *) Address.jumpCheckBase);
+
+    Address.plantSubBase = Address.moduleBase + 0x21DC0;
+    pr_bug("种植时减金币代码校验基址: 0x%p\n", (void *) Address.plantSubBase);
+
+    Address.upgradeSubBase = Address.moduleBase + 0x24612;
+    pr_bug("升级时减金币代码校验基址: 0x%p\n", (void *) Address.upgradeSubBase);
 }
 
 void modifyJumpCheck(void)
@@ -135,7 +143,7 @@ void modifyJumpCheck(void)
     static const BYTE targetCode[] = {0xEB, 0x70};  // jmp
     BYTE tempBuf[2] = {0};
     ReadProcessMemory(hProcess, (LPCVOID) Address.jumpCheckBase, tempBuf, sizeof(tempBuf), NULL);
-    pr_bug("Previous Code: %x %x\n", tempBuf[0], tempBuf[1]);
+    pr_bug("Previous Code - JumpCheck: %x %x\n", tempBuf[0], tempBuf[1]);
     if (tempBuf[0] == originalCode[0] && tempBuf[1] == originalCode[1])
     {
         pr_info("CoinNumCheck patch point found. Trying to patch.\n");
@@ -149,13 +157,53 @@ void modifyJumpCheck(void)
     }
 }
 
+void modifyPlantSub(void)
+{
+    static const BYTE originalCode[] = {0x29, 0x5F, 0x74};  // sub
+    static const BYTE targetCode[] = {0x01, 0x5F, 0x74};  // add
+    BYTE tempBuf[3] = {0};
+    ReadProcessMemory(hProcess, (LPCVOID) Address.plantSubBase, tempBuf, sizeof(tempBuf), NULL);
+    pr_bug("Previous Code - PlantSub: %x %x\n", tempBuf[0], tempBuf[1]);
+    if (tempBuf[0] == originalCode[0] && tempBuf[1] == originalCode[1])
+    {
+        pr_info("PlantSub patch point found. Trying to patch.\n");
+        WriteProcessMemory(hProcess, (LPVOID) Address.plantSubBase, targetCode, sizeof(targetCode), NULL);
+    } else if (tempBuf[0] == targetCode[0] && tempBuf[1] == targetCode[1])
+    {
+        pr_info("PlantSub has already been patched.\n");
+    } else
+    {
+        pr_warn("Unknown PlantSub patch state.\n");
+    }
+}
+
+void modifyUpgradeSub(void)
+{
+    static const BYTE originalCode[] = {0x01, 0x46, 0x74};  // add
+    static const BYTE targetCode[] = {0x29, 0x46, 0x74};  // sub
+    BYTE tempBuf[3] = {0};
+    ReadProcessMemory(hProcess, (LPCVOID) Address.upgradeSubBase, tempBuf, sizeof(tempBuf), NULL);
+    pr_bug("Previous Code - UpgradeSub: %x %x\n", tempBuf[0], tempBuf[1]);
+    if (tempBuf[0] == originalCode[0] && tempBuf[1] == originalCode[1])
+    {
+        pr_info("UpgradeSub patch point found. Trying to patch.\n");
+        WriteProcessMemory(hProcess, (LPVOID) Address.upgradeSubBase, targetCode, sizeof(targetCode), NULL);
+    } else if (tempBuf[0] == targetCode[0] && tempBuf[1] == targetCode[1])
+    {
+        pr_info("UpgradeSub has already been patched.\n");
+    } else
+    {
+        pr_warn("Unknown UpgradeSub patch state.\n");
+    }
+}
+
 void modifyCoinNum(void)
 {
     DWORD coinNum_previous = 0;
     ReadProcessMemory(hProcess, (LPCVOID) Address.coinNumBase, &coinNum_previous, 4, NULL);
     pr_info("Previous Coin Num: %lu\n", coinNum_previous);
-    DWORD coinNum_target = 666666;
-    if (coinNum_previous < coinNum_target - 1000)
+    DWORD coinNum_target = 6666;
+    if (coinNum_previous < coinNum_target - 100)
     {
         WriteProcessMemory(hProcess, (LPVOID) Address.coinNumBase, &coinNum_target, 4, NULL);
         pr_info("Set Coin Num to: %lu\n", coinNum_target);
@@ -190,6 +238,8 @@ int main()
     openProcess();
     getAddress();
     modifyJumpCheck();
+    modifyPlantSub();
+    modifyUpgradeSub();
     while (loopContinueFlag)
     {
         modifyCoinNum();

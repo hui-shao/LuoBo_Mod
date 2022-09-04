@@ -5,7 +5,7 @@
 #include <psapi.h>
 #include "print.h"
 
-#define VERSION "1.0"
+#define VERSION "1.1"
 
 void findWindow(void);
 
@@ -16,6 +16,10 @@ void openProcess(void);
 void getAddress(void);
 
 void modifyJumpCheck(void);
+
+void modifyPlantSub(void);
+
+void modifyUpgradeSub(void);
 
 void modifyCoinNum(void);
 
